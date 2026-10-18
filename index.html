@@ -70,12 +70,13 @@ input,select{width:100%;margin-top:3px;padding:9px 10px;border:1px solid var(--l
 
 <dialog id="dS"><form method="dialog" id="fS">
   <h2 id="tS">Nova assinatura</h2>
-  <label>Nome do serviço<input name="name" required placeholder="YouTube Premium Família"></label>
+  <label>Nome do serviço<input name="name" required list="svcs" placeholder="Escolha ou digite"></label><datalist id="svcs"><option value="YouTube Premium Família"><option value="Spotify Família"><option value="Netflix"><option value="Canva Pro"><option value="Disney+"><option value="Max"><option value="Prime Video"><option value="Apple Music Família"><option value="Duolingo Super Família"><option value="ChatGPT Plus"><option value="Microsoft 365 Família"><option value="Google One"><option value="Crunchyroll"></datalist>
   <div class="row">
     <label>Vagas para membros<input name="slots" type="number" min="1" value="5" required></label>
     <label>Valor por membro (R$)<input name="price" type="number" min="0" step="0.01" required></label>
   </div>
-  <label>Quanto você paga por mês (R$)<input name="cost" type="number" min="0" step="0.01" value="0"></label>
+  <label>Valor total do plano por mês (R$)<input name="cost" type="number" min="0" step="0.01" value="0"></label>
+  <p class="meta" id="hint"></p><button type="button" id="useSug">Usar valor sugerido</button>
   <div class="btns"><button type="button" data-close>Cancelar</button><button class="p">Salvar</button></div>
 </form></dialog>
 
@@ -91,7 +92,7 @@ input,select{width:100%;margin-top:3px;padding:9px 10px;border:1px solid var(--l
   <div class="btns"><button type="button" data-close>Cancelar</button><button class="p">Salvar</button></div>
 </form></dialog>
 
-<dialog id="dB"><h2 id="tB"></h2><p class="meta" id="hB"></p><textarea id="taB" rows="8" style="width:100%;margin-top:6px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:13px/1.3 monospace"></textarea><div class="btns"><button type="button" data-close>Fechar</button><button type="button" class="p" id="okB"></button></div></dialog>
+<dialog id="dB"><h2 id="tB"></h2><p class="meta" id="hB"></p><textarea id="taB" rows="8" style="width:100%;margin-top:6px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:13px/1.3 monospace"></textarea><input id="pwB" type="password" placeholder="Senha do backup" autocomplete="off" style="margin-top:8px"><div class="btns"><button type="button" data-close>Fechar</button><button type="button" class="p" id="okB"></button></div></dialog>
 
 <script>
 var KEY="gestor-vagas-v1",S={services:[],members:[]},editS=null,editM=null,curS=null;
@@ -129,7 +130,7 @@ function render(){
     var all=S.members.filter(function(m){return m.sid===s.id}).sort(function(a,b){return (active(b)-active(a))||(a.end||"9").localeCompare(b.end||"9")});
     var n=all.filter(active).length,dots="";
     for(var i=0;i<s.slots;i++)dots+='<i class="'+(i<n?"f":"")+'"></i>';
-    h+='<section class="svc"><div class="svh"><div><h2>'+esc(s.name)+'</h2><div class="meta">'+brl(s.price)+" por membro · "+n+"/"+s.slots+' vagas</div><div class="dots" aria-hidden="true">'+dots+'</div></div><div class="act"><button class="p" data-am="'+s.id+'">Adicionar membro</button><button class="g" data-es="'+s.id+'">Editar</button><button class="g d" data-ds="'+s.id+'">Excluir</button></div></div>';
+    h+='<section class="svc"><div class="svh"><div><h2>'+esc(s.name)+'</h2><div class="meta">'+brl(s.price)+" por membro · "+n+"/"+s.slots+' vagas</div><div class="meta">Plano: '+brl(+s.cost||0)+" · Lucro: "+brl(n*s.price-(+s.cost||0))+'</div><div class="dots" aria-hidden="true">'+dots+'</div></div><div class="act"><button class="p" data-am="'+s.id+'">Adicionar membro</button><button class="g" data-es="'+s.id+'">Editar</button><button class="g d" data-ds="'+s.id+'">Excluir</button></div></div>';
     if(!all.length)h+='<div class="empty">Nenhum membro ainda.</div>';
     all.forEach(function(m){
       var paid=(m.paid||[]).indexOf(now)>=0,on=active(m),t="";
@@ -166,6 +167,25 @@ document.getElementById("imp").onclick=function(){openB("i")};
 document.getElementById("okB").onclick=function(){var t=document.getElementById("taB"),b=this;
   if(bMode==="x"){t.select();var ok=function(){b.textContent="Copiado!"};try{navigator.clipboard.writeText(t.value).then(ok,function(){document.execCommand("copy");ok()})}catch(e){try{document.execCommand("copy");ok()}catch(e2){}}}
   else{try{var d=JSON.parse(t.value);if(d.services&&d.members&&confirm("Substituir os dados atuais pelo backup?")){S=d;save();render();document.getElementById("dB").close()}}catch(e){alert("Texto de backup inválido.")}}};
+function sug(){var f=document.getElementById("fS").elements,c=+f.cost.value||0,n=(+f.slots.value||0)+1,h=document.getElementById("hint");
+  if(c>0&&n>1){var v=Math.ceil(c/n*100)/100,w=Math.ceil(c/(n-1)*100)/100;h.textContent="Dividindo entre você e "+(n-1)+" membros: "+brl(v)+" por pessoa. Se só os membros pagam: "+brl(w)+".";return v}
+  h.textContent="Informe o valor do plano para ver a sugestão.";return 0}
+document.getElementById("fS").oninput=sug;
+document.getElementById("useSug").onclick=function(){var v=sug();if(v)document.getElementById("fS").elements.price.value=v.toFixed(2)};
+document.getElementById("addSvc").addEventListener("click",sug);
+document.getElementById("list").addEventListener("click",function(e){if(e.target.closest("[data-es]"))sug()});
+function b64(u){var t="";u.forEach(function(x){t+=String.fromCharCode(x)});return btoa(t)}
+function unb(t){return Uint8Array.from(atob(t),function(c){return c.charCodeAt(0)})}
+function dk(pw,salt){return crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]).then(function(k){return crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:200000,hash:"SHA-256"},k,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])})}
+function enc(txt,pw){var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));return dk(pw,salt).then(function(k){return crypto.subtle.encrypt({name:"AES-GCM",iv:iv},k,new TextEncoder().encode(txt))}).then(function(c){return "VAGAS1:"+b64(salt)+":"+b64(iv)+":"+b64(new Uint8Array(c))})}
+function dec(str,pw){var p=str.trim().split(":");if(p[0]!=="VAGAS1")return Promise.reject();return dk(pw,unb(p[1])).then(function(k){return crypto.subtle.decrypt({name:"AES-GCM",iv:unb(p[2])},k,unb(p[3]))}).then(function(b){return new TextDecoder().decode(b)})}
+function openB(m){bMode=m;var x=m==="x";document.getElementById("tB").textContent=x?"Backup criptografado":"Restaurar backup";document.getElementById("hB").textContent=x?"Crie uma senha e toque em Gerar. Guarde o texto e a senha: sem a senha não dá para abrir.":"Cole o texto do backup, digite a senha e toque em Restaurar.";document.getElementById("taB").value="";document.getElementById("pwB").value="";document.getElementById("okB").textContent=x?"Gerar e copiar":"Restaurar";document.getElementById("dB").showModal()}
+function restore(j){var d=JSON.parse(j);if(d.services&&d.members&&confirm("Substituir os dados atuais pelo backup?")){S=d;save();render();document.getElementById("dB").close()}}
+document.getElementById("okB").onclick=function(){var t=document.getElementById("taB"),pw=document.getElementById("pwB").value,b=this;
+  if(bMode!=="x"&&t.value.trim().charAt(0)==="{"){try{restore(t.value)}catch(e){alert("Texto inválido.")}return}
+  if(pw.length<6){alert("Use uma senha de pelo menos 6 caracteres.");return}
+  if(bMode==="x"){enc(JSON.stringify(S),pw).then(function(r){t.value=r;t.select();try{navigator.clipboard.writeText(r).then(function(){b.textContent="Copiado!"},function(){document.execCommand("copy")})}catch(e){try{document.execCommand("copy")}catch(e2){}}})}
+  else{dec(t.value,pw).then(restore,function(){alert("Senha errada ou texto inválido.")})}};
 load();render();
 </script>
 </body>
